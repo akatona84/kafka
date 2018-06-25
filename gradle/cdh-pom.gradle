@@ -5,10 +5,11 @@ configurations {
 }
 
 repositories {
-  mavenCentral()
-  maven { url mavenArtifactoryUrl }
-  maven { url repositoryUrl }
   mavenLocal()
+  maven { url repositoryUrl }
+  maven { url mavenArtifactoryUrl }
+  mavenCentral()
+  jcenter()
 }
 
 
@@ -35,6 +36,9 @@ configurations.cdhPom.resolve().each { file ->
 
     ext.cdhJackson2Version = parser.properties."cdh.jackson2.version"
     logger.info("Setting jackson2 version to $cdhJackson2Version")
+
+    ext.cdhJmhVersion = parser.properties."cdh.jmh.version"
+    logger.info("Setting jmh version to $cdhJmhVersion")
 
     // Only set if its not already to support CLI overrides
     if (!project.hasProperty('scalaVersion')) {

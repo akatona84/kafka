@@ -57,7 +57,7 @@ versions += [
   jackson: cdhJackson2Version,
   jetty: cdhJetty9Version,
   jersey: "2.25.1",
-  jmh: "1.19",
+  jmh: cdhJmhVersion,
   log4j: "1.2.17",
   jopt: "5.0.4",
   junit: "4.12",
