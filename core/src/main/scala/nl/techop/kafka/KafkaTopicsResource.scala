@@ -17,11 +17,11 @@
 
 package nl.techop.kafka
 
-import java.util.{Collections, Properties}
-import javax.ws.rs.core.MediaType
-import javax.ws.rs.{GET, Path, Produces}
+import java.util.Properties
 
 import com.fasterxml.jackson.annotation.JsonProperty
+import javax.ws.rs.core.MediaType
+import javax.ws.rs.{GET, Path, Produces}
 import kafka.server.KafkaServer
 
 import scala.collection.JavaConverters._
@@ -42,6 +42,8 @@ class KafkaTopicsResource(server: KafkaServer) {
   @GET
   def listTopics: java.util.Map[String, KafkaTopic] = {
     if (server == null) return null
+    // metadataCache may not be initialized
+    if (server.metadataCache == null) return java.util.Collections.emptyMap()
 
     val topics = server.metadataCache.getAllTopics()
 
