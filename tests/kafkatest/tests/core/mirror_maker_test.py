@@ -39,9 +39,9 @@ class TestMirrorMakerService(ProduceConsumeValidateTest):
         self.source_zk = ZookeeperService(test_context, num_nodes=1)
         self.target_zk = ZookeeperService(test_context, num_nodes=1)
 
-        self.source_kafka = KafkaService(test_context, num_nodes=1, zk=self.source_zk, version=LATEST_0_11_0,
+        self.source_kafka = KafkaService(test_context, num_nodes=1, zk=self.source_zk, version=LATEST_1_0,
                                   topics={self.topic: {"partitions": 1, "replication-factor": 1}})
-        self.target_kafka = KafkaService(test_context, num_nodes=1, zk=self.target_zk,, version=LATEST_1_0,
+        self.target_kafka = KafkaService(test_context, num_nodes=1, zk=self.target_zk,, version=LATEST_0_11_0,
                                   topics={self.topic: {"partitions": 1, "replication-factor": 1}})
         # This will produce to source kafka cluster
         self.producer = VerifiableProducer(test_context, num_nodes=1, kafka=self.source_kafka, topic=self.topic,
