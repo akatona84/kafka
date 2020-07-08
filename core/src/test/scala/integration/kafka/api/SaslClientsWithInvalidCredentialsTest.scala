@@ -74,48 +74,58 @@ class SaslClientsWithInvalidCredentialsTest extends IntegrationTestHarness with 
   @Test
   def testProducerWithAuthenticationFailure(): Unit = {
     val producer = createProducer()
-    verifyAuthenticationException(sendOneRecord(producer, maxWaitMs = 10000))
-    verifyAuthenticationException(producer.partitionsFor(topic))
+    try {
+      verifyAuthenticationException(sendOneRecord(producer, maxWaitMs = 10000))
+      verifyAuthenticationException(producer.partitionsFor(topic))
 
-    createClientCredential()
-    verifyWithRetry(sendOneRecord(producer))
+      createClientCredential()
+      verifyWithRetry(sendOneRecord(producer))
+    } finally producer.close()
   }
 
   @Test
   def testTransactionalProducerWithAuthenticationFailure(): Unit = {
     val txProducer = createTransactionalProducer()
-    verifyAuthenticationException(txProducer.initTransactions())
-
-    createClientCredential()
     try {
-      txProducer.initTransactions()
-      fail("Transaction initialization should fail after authentication failure")
-    } catch {
-      case _: KafkaException => // expected exception
-    }
+      verifyAuthenticationException(txProducer.initTransactions())
+
+      createClientCredential()
+      try {
+        txProducer.initTransactions()
+        fail("Transaction initialization should fail after authentication failure")
+      } catch {
+        case _: KafkaException => // expected exception
+      }
+    } finally txProducer.close()
   }
 
   @Test
   def testConsumerWithAuthenticationFailure(): Unit = {
     val consumer = createConsumer()
-    consumer.subscribe(List(topic).asJava)
-    verifyConsumerWithAuthenticationFailure(consumer)
+    try {
+      consumer.subscribe(List(topic).asJava)
+      verifyConsumerWithAuthenticationFailure(consumer)
+    } finally consumer.close()
   }
 
   @Test
   def testManualAssignmentConsumerWithAuthenticationFailure(): Unit = {
     val consumer = createConsumer()
-    consumer.assign(List(tp).asJava)
-    verifyConsumerWithAuthenticationFailure(consumer)
+    try {
+      consumer.assign(List(tp).asJava)
+      verifyConsumerWithAuthenticationFailure(consumer)
+    } finally consumer.close()
   }
 
   @Test
   def testManualAssignmentConsumerWithAutoCommitDisabledWithAuthenticationFailure(): Unit = {
     this.consumerConfig.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false.toString)
     val consumer = createConsumer()
-    consumer.assign(List(tp).asJava)
-    consumer.seek(tp, 0)
-    verifyConsumerWithAuthenticationFailure(consumer)
+    try {
+      consumer.assign(List(tp).asJava)
+      consumer.seek(tp, 0)
+      verifyConsumerWithAuthenticationFailure(consumer)
+    } finally consumer.close()
   }
 
   private def verifyConsumerWithAuthenticationFailure(consumer: KafkaConsumer[Array[Byte], Array[Byte]]): Unit = {
@@ -124,8 +134,10 @@ class SaslClientsWithInvalidCredentialsTest extends IntegrationTestHarness with 
 
     createClientCredential()
     val producer = createProducer()
-    verifyWithRetry(sendOneRecord(producer))
-    verifyWithRetry(assertEquals(1, consumer.poll(Duration.ofMillis(1000)).count))
+    try {
+      verifyWithRetry(sendOneRecord(producer))
+      verifyWithRetry(assertEquals(1, consumer.poll(Duration.ofMillis(1000)).count))
+    } finally producer.close()
   }
 
   @Test
@@ -161,10 +173,14 @@ class SaslClientsWithInvalidCredentialsTest extends IntegrationTestHarness with 
     val consumerGroupService: ConsumerGroupService = prepareConsumerGroupService
 
     val consumer = createConsumer()
-    consumer.subscribe(List(topic).asJava)
+    try {
+      consumer.subscribe(List(topic).asJava)
 
-    verifyAuthenticationException(consumerGroupService.listGroups())
-    consumerGroupService.close()
+      verifyAuthenticationException(consumerGroupService.listGroups())
+    } finally {
+      consumer.close()
+      consumerGroupService.close()
+    }
   }
 
   @Test
@@ -173,19 +189,26 @@ class SaslClientsWithInvalidCredentialsTest extends IntegrationTestHarness with 
     val consumerGroupService: ConsumerGroupService = prepareConsumerGroupService
 
     val consumer = createConsumer()
-    consumer.subscribe(List(topic).asJava)
+    try {
+      consumer.subscribe(List(topic).asJava)
 
-    verifyWithRetry(consumer.poll(Duration.ofMillis(1000)))
-    assertEquals(1, consumerGroupService.listConsumerGroups().size)
-    consumerGroupService.close()
+      verifyWithRetry(consumer.poll(Duration.ofMillis(1000)))
+      assertEquals(1, consumerGroupService.listConsumerGroups().size)
+    }
+    finally {
+      consumer.close()
+      consumerGroupService.close()
+    }
   }
 
   private def prepareConsumerGroupService = {
     val propsFile = TestUtils.tempFile()
     val propsStream = Files.newOutputStream(propsFile.toPath)
-    propsStream.write("security.protocol=SASL_PLAINTEXT\n".getBytes())
-    propsStream.write(s"sasl.mechanism=$kafkaClientSaslMechanism".getBytes())
-    propsStream.close()
+    try {
+      propsStream.write("security.protocol=SASL_PLAINTEXT\n".getBytes())
+      propsStream.write(s"sasl.mechanism=$kafkaClientSaslMechanism".getBytes())
+    }
+    finally propsStream.close()
 
     val cgcArgs = Array("--bootstrap-server", brokerList,
                         "--describe",
